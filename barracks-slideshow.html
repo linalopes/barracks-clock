@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Slideshow — The Clock That Survived</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Special+Elite&family=Playfair+Display:ital,wght@0,900;1,400&display=swap');
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  background: #0a0a0a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  font-family: 'Special Elite', monospace;
+}
+
+#slideshow {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* ── SLIDE ── */
+.slide {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 0.9s ease;
+  pointer-events: none;
+}
+.slide.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.slide img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  filter: grayscale(100%) contrast(0.9) brightness(0.82);
+}
+
+/* dark vignette */
+.slide::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.55) 100%);
+  pointer-events: none;
+}
+
+/* ── OVERLAY PANELS ── */
+.overlay {
+  position: absolute;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-width: 480px;
+  opacity: 0;
+  transition: opacity 0.4s ease 0.5s;
+}
+.overlay.show { opacity: 1; }
+
+.overlay.bottom-left  { bottom: 52px; left: 52px; align-items: flex-start; }
+.overlay.bottom-right { bottom: 52px; right: 52px; align-items: flex-end; text-align: right; }
+.overlay.top-right    { top: 52px; right: 52px; align-items: flex-end; text-align: right; }
+.overlay.top-left     { top: 52px; left: 52px; align-items: flex-start; }
+
+/* source label — small, ghost */
+.label {
+  font-family: 'Special Elite', monospace;
+  font-size: 9px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.35);
+  border-bottom: 1px solid rgba(255,255,255,0.12);
+  padding-bottom: 4px;
+  margin-bottom: 2px;
+}
+
+/* ── COUNTER — fluorescent pink, large ── */
+.counter {
+  font-family: 'Special Elite', monospace;
+  font-size: clamp(36px, 6vw, 72px);
+  color: #ff4d8f;
+  line-height: 1;
+  text-shadow:
+    0 0 20px rgba(255,77,143,0.8),
+    0 0 50px rgba(255,77,143,0.4),
+    0 0 90px rgba(255,0,102,0.2);
+  letter-spacing: -1px;
+}
+
+/* ── CAPTION — white italic ── */
+.caption {
+  font-family: 'Playfair Display', serif;
+  font-style: italic;
+  font-size: clamp(13px, 1.5vw, 17px);
+  color: rgba(255,255,255,0.82);
+  line-height: 1.45;
+  max-width: 380px;
+  text-shadow: 0 1px 8px rgba(0,0,0,0.6);
+  margin-top: 4px;
+}
+
+/* neon underline accent */
+.neon-rule {
+  width: 60px;
+  height: 1.5px;
+  background: linear-gradient(90deg, #ff4d8f, #ff1aff);
+  box-shadow: 0 0 8px #ff4d8f, 0 0 16px #ff1aff;
+  margin: 6px 0;
+  border-radius: 2px;
+}
+.overlay.bottom-right .neon-rule,
+.overlay.top-right .neon-rule { margin-left: auto; }
+
+/* ── DOTS ── */
+#dots {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 10px;
+  z-index: 100;
+}
+.dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.2);
+  cursor: pointer;
+  transition: background 0.3s, box-shadow 0.3s;
+  border: 1px solid rgba(255,77,143,0.3);
+}
+.dot.active {
+  background: #ff4d8f;
+  box-shadow: 0 0 8px #ff4d8f, 0 0 16px rgba(255,77,143,0.5);
+}
+
+/* ── PROGRESS BAR ── */
+#prog {
+  position: fixed;
+  bottom: 0; left: 0;
+  height: 2px;
+  background: linear-gradient(90deg, #ff4d8f, #ff1aff);
+  box-shadow: 0 0 8px #ff4d8f;
+  z-index: 200;
+  transition: width linear;
+}
+
+/* ── CLICK AREAS ── */
+#prev, #next {
+  position: fixed;
+  top: 0; bottom: 0;
+  width: 30%;
+  z-index: 50;
+  cursor: pointer;
+  opacity: 0;
+}
+#prev { left: 0; }
+#next { right: 0; }
+</style>
+</head>
+<body>
+
+<div id="slideshow"></div>
+<div id="dots"></div>
+<div id="prog"></div>
+<div id="prev"></div>
+<div id="next"></div>
+
+<script>
+const SLIDES = [
+  {
+    img: "1.webp",
+    label: "Infanteriekaserne · Lucerne",
+    counterType: "year_range",
+    yearStart: 1863,
+    yearEnd: 1970,
+
+    caption: `1,111 soldiers. Every morning. The same hour.`,
+    overlayPos: "bottom-left"
+  },
+  {
+    img: "2.webp",
+    label: "Restaurant Galliker · Kasernenplatz",
+    counterType: "fixed_date",
+
+
+    fixedDate: "14 April 1971 · Happy Hour",
+    caption: `"He could dig it out of the rubble after the blasting."`,
+    overlayPos: "bottom-left"
+  },
+  {
+    img: "3.webp",
+    label: "Kasernenplatz · aerial",
+    counterType: "fixed_date",
+
+
+    fixedDate: "15 April 1971 · 08:31",
+    caption: `The building collapsed into the street.`,
+    overlayPos: "top-right"
+  },
+  {
+    img: "4.webp",
+    label: "Aftermath · street level",
+    counterType: "days_after",
+
+
+
+    caption: `The rubble remained. The clock did not.`,
+    overlayPos: "bottom-left"
+  },
+  {
+    img: "5.webp",
+    label: "Luzern-Zentrum · today",
+    counterType: "fixed_date",
+
+
+    fixedDate: "March 2026",
+    caption: `Where the barracks stood.`,
+    overlayPos: "bottom-left"
+  },
+  {
+    img: "6.webp",
+    label: "Zytturm · Museggmauer",
+    counterType: "fixed_date",
+
+
+    fixedDate: "2012 → now",
+    caption: `It still keeps time.`,
+    overlayPos: "bottom-right"
+  }
+];
+
+const SLIDE_DURATION = 5000; // ms each slide
+const YEAR_COUNTER_DURATION = 3200; // ms to count years
+
+const container = document.getElementById('slideshow');
+const dotsEl    = document.getElementById('dots');
+const progEl    = document.getElementById('prog');
+
+let current = 0;
+let timer = null;
+let progTimer = null;
+let progStart = null;
+
+// ── BUILD DOM ──
+SLIDES.forEach((s, i) => {
+  // slide wrapper
+  const slide = document.createElement('div');
+  slide.className = 'slide';
+  slide.id = 'slide-' + i;
+
+  const img = document.createElement('img');
+  img.src = s.img;
+  img.alt = s.label;
+  slide.appendChild(img);
+
+  // overlay
+  const ov = document.createElement('div');
+  ov.className = 'overlay ' + s.overlayPos;
+
+  const lbl = document.createElement('div');
+  lbl.className = 'label';
+  lbl.textContent = s.label;
+  ov.appendChild(lbl);
+
+  const rule = document.createElement('div');
+  rule.className = 'neon-rule';
+  ov.appendChild(rule);
+
+  const ctr = document.createElement('div');
+  ctr.className = 'counter';
+  ctr.id = 'counter-' + i;
+  ov.appendChild(ctr);
+
+  const cap = document.createElement('div');
+  cap.className = 'caption';
+  cap.textContent = s.caption;
+  ov.appendChild(cap);
+
+  slide.appendChild(ov);
+  container.appendChild(slide);
+
+  // dot
+  const dot = document.createElement('div');
+  dot.className = 'dot';
+  dot.addEventListener('click', () => goTo(i));
+  dotsEl.appendChild(dot);
+});
+
+// ── COUNTER LOGIC ──
+let counterRAF = null;
+
+function stopCounter() {
+  if (counterRAF) cancelAnimationFrame(counterRAF);
+  counterRAF = null;
+}
+
+function runCounter(slideIdx) {
+  const s = SLIDES[slideIdx];
+  const el = document.getElementById('counter-' + slideIdx);
+  stopCounter();
+
+  if (s.counterType === 'fixed_date') {
+    el.textContent = s.fixedDate;
+    return;
+  }
+
+  if (s.counterType === 'year_range') {
+    // count from yearStart to yearEnd, accelerating
+    const start = s.yearStart;
+    const end   = s.yearEnd;
+    const dur   = YEAR_COUNTER_DURATION;
+    const t0    = performance.now();
+    function frame(now) {
+      const elapsed = now - t0;
+      // ease-in quad: starts slow, accelerates
+      const p = Math.min(elapsed / dur, 1);
+      const eased = p * p;
+      const year  = Math.floor(start + eased * (end - start));
+      el.textContent = year;
+      if (p < 1) {
+        counterRAF = requestAnimationFrame(frame);
+      } else {
+        el.textContent = end;
+      }
+    }
+    counterRAF = requestAnimationFrame(frame);
+    return;
+  }
+
+  if (s.counterType === 'days_after') {
+    // count days after Apr 15 1971, accelerating
+    el.textContent = '15 Apr 1971';
+    const days = ['15 Apr', '16 Apr', '17 Apr', '20 Apr', '24 Apr',
+                  '01 May', '15 May', '01 Jun', '01 Aug', 'Winter'];
+    let idx = 0;
+    const intervals = [400, 320, 260, 200, 160, 130, 110, 90, 80, 70];
+    function step() {
+      if (idx >= days.length) return;
+      el.textContent = days[idx] + ' 1971';
+      const delay = intervals[Math.min(idx, intervals.length - 1)];
+      idx++;
+      counterRAF = setTimeout(step, delay);
+    }
+    counterRAF = setTimeout(step, 500);
+    return;
+  }
+}
+
+// ── PROGRESS BAR ──
+function startProgress(duration) {
+  if (progTimer) cancelAnimationFrame(progTimer);
+  progStart = performance.now();
+  progEl.style.transition = 'none';
+  progEl.style.width = '0%';
+
+  function tick(now) {
+    const p = Math.min((now - progStart) / duration, 1) * 100;
+    progEl.style.width = p + '%';
+    if (p < 100) progTimer = requestAnimationFrame(tick);
+  }
+  progTimer = requestAnimationFrame(tick);
+}
+
+// ── GO TO SLIDE ──
+function goTo(idx) {
+  clearTimeout(timer);
+  stopCounter();
+
+  // hide all
+  document.querySelectorAll('.slide').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.overlay').forEach(el => el.classList.remove('show'));
+  document.querySelectorAll('.dot').forEach(el => el.classList.remove('active'));
+
+  current = ((idx % SLIDES.length) + SLIDES.length) % SLIDES.length;
+
+  const slide = document.getElementById('slide-' + current);
+  slide.classList.add('active');
+  dotsEl.children[current].classList.add('active');
+
+  // show overlay after small delay
+  setTimeout(() => {
+    slide.querySelector('.overlay').classList.add('show');
+    runCounter(current);
+  }, 300);
+
+  startProgress(SLIDE_DURATION);
+  timer = setTimeout(() => goTo(current + 1), SLIDE_DURATION);
+}
+
+// ── NAVIGATION ──
+document.getElementById('prev').addEventListener('click', () => goTo(current - 1));
+document.getElementById('next').addEventListener('click', () => goTo(current + 1));
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight' || e.key === ' ') goTo(current + 1);
+  if (e.key === 'ArrowLeft') goTo(current - 1);
+});
+
+// ── START ──
+goTo(0);
+</script>
+</body>
+</html>

@@ -1,0 +1,838 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Clock That Survived — Lucerne 1862–1971</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400;1,700&family=Lora:ital,wght@0,400;0,500;1,400;1,500&family=Special+Elite&display=swap" rel="stylesheet">
+<style>
+:root {
+  --paper:       #f0eff0;
+  --paper-mid:   #e4e3e6;
+  --paper-dark:  #d8d6db;
+  --ink:         #141318;
+  --ink-mid:     #2e2c34;
+  --ink-faint:   #6e6a7a;
+  --ink-ghost:   #a8a4b4;
+
+  /* fluorescent spectrum — confirmed=none, speculative=warm pink, gap=hot pink, fiction=neon */
+  --fl-warm:   #ff4d8f;
+  --fl-hot:    #ff0066;
+  --fl-neon:   #ff1aff;
+  --fl-glow:   rgba(255,0,102,0.12);
+  --fl-glow2:  rgba(255,26,255,0.10);
+
+  --confirmed-mark: #2c2c34;   /* near-black rule */
+  --rule: rgba(20,19,24,0.12);
+  --rule-strong: rgba(20,19,24,0.4);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+
+body {
+  background-color: var(--paper);
+  color: var(--ink);
+  font-family: 'Lora', Georgia, serif;
+  font-size: 16px;
+  line-height: 1.8;
+  overflow-x: hidden;
+  position: relative;
+}
+
+/* noise texture overlay */
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='0.055'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* everything above noise */
+body > * { position: relative; z-index: 1; }
+
+/* ── PROGRESS ─────────────────────────────────────── */
+#progress {
+  position: fixed; top: 0; left: 0;
+  height: 2px; width: 0%;
+  background: linear-gradient(90deg, var(--fl-warm), var(--fl-neon));
+  z-index: 999;
+  box-shadow: 0 0 8px var(--fl-warm);
+  transition: width 0.1s linear;
+}
+
+/* ── READING KEY ──────────────────────────────────── */
+#key {
+  position: fixed;
+  top: 20px; right: 20px;
+  z-index: 900;
+  background: var(--paper);
+  border: 1px solid var(--rule);
+  padding: 10px 14px;
+  font-family: 'Special Elite', monospace;
+  font-size: 9px;
+  color: var(--ink-faint);
+  line-height: 2;
+  opacity: 0;
+  transition: opacity 0.4s;
+  backdrop-filter: blur(4px);
+}
+#key.show { opacity: 1; }
+#key-toggle {
+  cursor: pointer; font-size: 8px; letter-spacing: 2px;
+  text-transform: uppercase; color: var(--ink-faint);
+  margin-bottom: 4px; user-select: none;
+}
+#key-body { display: none; }
+#key.open #key-body { display: block; }
+.key-row { display: flex; align-items: center; gap: 10px; margin: 2px 0; }
+.key-bar { width: 24px; height: 3px; border-radius: 2px; flex-shrink: 0; }
+.kb-confirmed  { background: var(--confirmed-mark); }
+.kb-speculative { background: var(--fl-warm); box-shadow: 0 0 4px var(--fl-warm); }
+.kb-gap        { background: none; border-bottom: 2px dotted var(--fl-hot); height: 0; margin-top:2px; }
+.kb-fiction    { background: var(--fl-neon); box-shadow: 0 0 6px var(--fl-neon); }
+
+/* ── MASTHEAD ─────────────────────────────────────── */
+#masthead {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 64px 40px 28px;
+  text-align: center;
+  border-bottom: 3px double var(--rule-strong);
+}
+.mast-top {
+  font-family: 'Special Elite', monospace;
+  font-size: 9px;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  color: var(--ink-ghost);
+  border-top: 1px solid var(--rule-strong);
+  border-bottom: 1px solid var(--rule-strong);
+  padding: 5px 0;
+  margin-bottom: 24px;
+}
+h1.headline {
+  font-family: 'Playfair Display', serif;
+  font-weight: 900;
+  font-size: clamp(44px, 8vw, 96px);
+  line-height: 0.92;
+  letter-spacing: -2px;
+  color: var(--ink);
+  margin-bottom: 20px;
+}
+h1.headline em {
+  font-style: italic;
+  font-weight: 400;
+}
+.deck {
+  font-family: 'Lora', serif;
+  font-style: italic;
+  font-size: 17px;
+  color: var(--ink-mid);
+  max-width: 560px;
+  margin: 0 auto 16px;
+  line-height: 1.55;
+}
+.byline {
+  font-family: 'Special Elite', monospace;
+  font-size: 10px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--ink-ghost);
+}
+
+/* ── CONTENT WRAPPER ──────────────────────────────── */
+#content {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 0 40px 120px;
+}
+
+/* ── SECTION HEADERS ──────────────────────────────── */
+.section-head {
+  margin: 80px 0 36px;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 16px;
+  opacity: 0;
+  transform: translateY(10px);
+  transition: opacity 0.6s, transform 0.6s;
+}
+.section-head.vis { opacity: 1; transform: none; }
+.section-rule { height: 1px; background: var(--rule-strong); }
+.section-label {
+  font-family: 'Special Elite', monospace;
+  font-size: 9px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  white-space: nowrap;
+}
+.date-stamp {
+  font-family: 'Special Elite', monospace;
+  font-size: 11px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--ink-ghost);
+  margin-bottom: 28px;
+}
+
+/* ══════════════════════════════════════════════════
+   PARAGRAPH TYPES — the core epistemological system
+   ══════════════════════════════════════════════════ */
+
+/* ── CONFIRMED: solid ink, printed, anchored ──────── */
+p.confirmed {
+  font-family: 'Lora', serif;
+  font-size: 16px;
+  color: var(--ink);
+  margin-bottom: 22px;
+  padding-left: 20px;
+  border-left: 2.5px solid var(--confirmed-mark);
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 0.5s, transform 0.5s;
+}
+p.confirmed.vis { opacity: 1; transform: none; }
+p.confirmed strong { font-weight: 700; }
+
+/* ── SPECULATIVE: warm pink glow halo, typewriter ─── */
+p.speculative {
+  font-family: 'Lora', serif;
+  font-style: italic;
+  font-size: 15.5px;
+  color: var(--ink-mid);
+  margin: 28px 0;
+  padding: 18px 24px;
+  border-left: 2px solid var(--fl-warm);
+  background: linear-gradient(90deg, rgba(255,77,143,0.06) 0%, transparent 80%);
+  box-shadow: -3px 0 12px -4px var(--fl-warm), inset 0 0 0 1px rgba(255,77,143,0.08);
+  opacity: 0;
+  transition: opacity 0.3s;
+  position: relative;
+}
+p.speculative.vis { opacity: 1; }
+/* outer glow strip */
+p.speculative::before {
+  content: '';
+  position: absolute;
+  left: -6px; top: 20%; bottom: 20%;
+  width: 2px;
+  background: var(--fl-warm);
+  filter: blur(4px);
+  opacity: 0.6;
+  border-radius: 2px;
+}
+
+/* ── OPEN GAP: dotted hot-pink border, floats ─────── */
+.gap-wrap {
+  margin: 36px 0;
+  opacity: 0;
+  transform: translateY(-10px);
+  transition: opacity 0.8s 0.2s, transform 0.8s 0.2s;
+}
+.gap-wrap.vis { opacity: 1; transform: none; }
+
+p.gap {
+  font-family: 'Special Elite', monospace;
+  font-size: 13px;
+  color: var(--fl-hot);
+  text-align: center;
+  padding: 14px 24px;
+  border-top: 1.5px dotted var(--fl-hot);
+  border-bottom: 1.5px dotted var(--fl-hot);
+  text-shadow: 0 0 16px rgba(255,0,102,0.3);
+  letter-spacing: 0.4px;
+  background: linear-gradient(transparent, rgba(255,0,102,0.03), transparent);
+}
+p.gap::before { content: '— '; opacity: 0.5; }
+p.gap::after  { content: ' —'; opacity: 0.5; }
+
+/* ── FICTION: neon bleed, large, floats up from blur ─ */
+.fiction-wrap {
+  margin: 48px -20px;
+  padding: 36px 40px;
+  opacity: 0;
+  transform: translateY(28px);
+  filter: blur(6px);
+  transition: opacity 1.1s ease, transform 1.1s ease, filter 1.1s ease;
+  position: relative;
+  text-align: center;
+}
+.fiction-wrap.vis {
+  opacity: 1;
+  transform: none;
+  filter: blur(0);
+}
+/* neon glow behind text block */
+.fiction-wrap::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at center, var(--fl-glow2) 0%, transparent 70%);
+  pointer-events: none;
+}
+/* top/bottom neon lines */
+.fiction-wrap::after {
+  content: '';
+  position: absolute;
+  left: 40px; right: 40px;
+  top: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--fl-neon), transparent);
+  opacity: 0.4;
+  box-shadow: 0 0 8px var(--fl-neon);
+}
+.fiction-line {
+  position: absolute;
+  left: 40px; right: 40px;
+  bottom: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--fl-neon), transparent);
+  opacity: 0.4;
+  box-shadow: 0 0 8px var(--fl-neon);
+}
+
+p.fiction {
+  font-family: 'Playfair Display', serif;
+  font-style: italic;
+  font-size: 22px;
+  font-weight: 400;
+  line-height: 1.5;
+  color: var(--ink-mid);
+  position: relative;
+  z-index: 1;
+}
+
+/* ── FLOATING PARTICLES for fiction sections ─────── */
+.particles {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+.particle {
+  position: absolute;
+  width: 3px; height: 3px;
+  border-radius: 50%;
+  background: var(--fl-neon);
+  opacity: 0;
+  animation: drift linear infinite;
+  box-shadow: 0 0 6px var(--fl-neon), 0 0 12px var(--fl-neon);
+}
+@keyframes drift {
+  0%   { transform: translateY(60px) scale(0); opacity: 0; }
+  10%  { opacity: 0.7; }
+  90%  { opacity: 0.4; }
+  100% { transform: translateY(-40px) scale(1.5); opacity: 0; }
+}
+
+/* ── WORLD CONTEXT: archival grey box ─────────────── */
+.world-ctx {
+  margin: 28px 0;
+  padding: 16px 22px;
+  border: 1px solid var(--paper-dark);
+  background: var(--paper-mid);
+  font-family: 'Special Elite', monospace;
+  font-size: 11px;
+  color: var(--ink-faint);
+  line-height: 1.85;
+  letter-spacing: 0.3px;
+  opacity: 0;
+  transition: opacity 0.6s 0.3s;
+}
+.world-ctx.vis { opacity: 1; }
+.world-ctx-label {
+  font-size: 8px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--ink-ghost);
+  margin-bottom: 8px;
+}
+.world-ctx span { display: block; padding: 1px 0; }
+.world-ctx span::before { content: '◆  '; font-size: 7px; color: var(--ink-ghost); }
+
+/* ── PARADOX BOX: special — confirmed with fl accent ─ */
+.paradox-box {
+  margin: 28px 0;
+  padding: 20px 24px;
+  border: 1px solid var(--paper-dark);
+  background: var(--paper-mid);
+  font-family: 'Special Elite', monospace;
+  font-size: 11px;
+  color: var(--ink-faint);
+  line-height: 1.9;
+  letter-spacing: 0.3px;
+  border-left: 3px solid var(--fl-warm);
+  box-shadow: -4px 0 16px -6px var(--fl-warm);
+  opacity: 0;
+  transition: opacity 0.6s 0.2s;
+}
+.paradox-box.vis { opacity: 1; }
+.paradox-box-label {
+  font-size: 8px; letter-spacing: 3px; text-transform: uppercase;
+  color: var(--fl-warm); margin-bottom: 8px;
+  text-shadow: 0 0 8px rgba(255,77,143,0.4);
+}
+.paradox-box span { display: block; padding: 2px 0; }
+
+/* ── PULL QUOTE ───────────────────────────────────── */
+.pull-quote {
+  margin: 44px 0;
+  padding: 24px 32px;
+  border-top: 3px solid var(--ink);
+  border-bottom: 1px solid var(--ink);
+  font-family: 'Playfair Display', serif;
+  font-style: italic;
+  font-size: 23px;
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--ink);
+  opacity: 0;
+  transform: translateY(10px);
+  transition: opacity 0.6s, transform 0.6s;
+}
+.pull-quote.vis { opacity: 1; transform: none; }
+.pull-attr {
+  display: block;
+  font-family: 'Special Elite', monospace;
+  font-size: 9px;
+  font-weight: 400;
+  font-style: normal;
+  letter-spacing: 2px;
+  color: var(--ink-faint);
+  margin-top: 12px;
+}
+.slideshow-embed {
+  margin: 18px 0 52px;
+  background: var(--paper);
+}
+.slideshow-embed iframe {
+  display: block;
+  width: 100%;
+  min-height: 82vh;
+  border: 0;
+  outline: 0;
+  background: transparent;
+}
+.detonator-embed {
+  max-width: 860px;
+  margin: 0 auto 34px;
+  padding: 40px 40px;
+  background: var(--paper);
+}
+.detonator-embed iframe {
+  display: block;
+  width: 100%;
+  min-height: 88vh;
+  border: 0;
+  outline: 0;
+  background: transparent;
+}
+
+/* ── IMAGE SLOTS ──────────────────────────────────── */
+.img-slot {
+  max-width: 340px;
+  aspect-ratio: 4/3;
+  border: 1px dashed var(--rule);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: var(--paper-mid);
+  font-family: 'Special Elite', monospace;
+  font-size: 10px;
+  color: var(--ink-ghost);
+  text-align: center;
+  padding: 20px;
+  float: right;
+  margin: 0 0 16px 32px;
+  opacity: 0;
+  transition: opacity 0.5s 0.2s;
+}
+.img-slot.vis { opacity: 1; }
+.img-slot-tag {
+  font-size: 8px; letter-spacing: 2px; text-transform: uppercase;
+  padding: 2px 8px; border: 1px solid; border-radius: 1px;
+}
+.img-slot.archive .img-slot-tag   { color: var(--ink-faint); border-color: var(--ink-ghost); }
+.img-slot.generated .img-slot-tag { color: var(--fl-neon); border-color: var(--fl-neon); box-shadow: 0 0 6px rgba(255,26,255,0.3); }
+.clearfix::after { content: ''; display: table; clear: both; }
+
+/* ── COL RULE ─────────────────────────────────────── */
+.col-rule {
+  display: block; width: 1px; height: 60px;
+  background: var(--rule); margin: 40px auto;
+}
+
+/* ── CODA ─────────────────────────────────────────── */
+#coda {
+  margin-top: 80px;
+  padding-top: 40px;
+  border-top: 3px double var(--rule-strong);
+  opacity: 0;
+  transition: opacity 0.8s;
+}
+#coda.vis { opacity: 1; }
+.coda-sources {
+  font-family: 'Special Elite', monospace;
+  font-size: 10px;
+  color: var(--ink-faint);
+  line-height: 1.9;
+  letter-spacing: 0.3px;
+  column-count: 2;
+  column-gap: 32px;
+  column-rule: 1px solid var(--rule);
+}
+.coda-label {
+  font-size: 8px; letter-spacing: 3px; text-transform: uppercase;
+  color: var(--ink-ghost); margin-bottom: 10px; column-span: all;
+}
+</style>
+</head>
+<body>
+
+<div id="progress"></div>
+
+<!-- READING KEY -->
+<div id="key">
+  <div id="key-toggle">▸ reading key</div>
+  <div id="key-body">
+    <div class="key-row"><span class="key-bar kb-confirmed"></span>confirmed</div>
+    <div class="key-row"><span class="key-bar kb-speculative"></span>speculative</div>
+    <div class="key-row"><span class="key-bar kb-gap"></span>open gap</div>
+    <div class="key-row"><span class="key-bar kb-fiction"></span>fiction</div>
+  </div>
+</div>
+
+<!-- MASTHEAD -->
+<div id="masthead">
+  <div class="mast-top">Lucerne · April 1971 · Archive & Speculation</div>
+  <h1 class="headline">The Clock<br><em>That Survived</em></h1>
+  <p class="deck">A reconstruction of the Barracks Clock of Lucerne — what is known, what is probable, what remains open, and what it invites us to imagine.</p>
+  <div class="byline">Kasernenplatz · 1862 – 2012 · Infanteriekaserne</div>
+</div>
+<div class="detonator-embed" aria-label="Barracks detonator embed">
+  <iframe
+    id="detonator-frame"
+    src="./barracks-detonator.html"
+    title="Barracks Detonator"
+    loading="lazy"
+    allowtransparency="true"
+  ></iframe>
+</div>
+
+<!-- CONTENT -->
+<div id="content">
+
+  <!-- ══ I — THE BUILDING -->
+  <div class="section-head">
+    <div class="section-rule"></div>
+    <div class="section-label">I — The Building & Its Clock</div>
+    <div class="section-rule"></div>
+  </div>
+  <div class="date-stamp">Lucerne · 1861 – 1935</div>
+
+  <div class="clearfix">
+    <div class="img-slot archive">
+      <span class="img-slot-tag">Archive</span>
+      <img src="1.webp" alt="Infanteriekaserne Lucerne c.1899" style="width:100%;display:block;border-radius:4px;box-shadow:0 1px 12px 0 #bbb;">
+      <span>Stadtarchiv Luzern<br>Lucerne’s infantry barracks (the large building in the background). In the foreground: the legendary “Mississippi steamboat” on the River Reuss—also later demolished.</span>
+    </div>
+
+    <p class="confirmed">Between <strong>1861 and 1863</strong>, a three-winged infantry barracks rose on what Lucerne then called the <strong>Kurzweilplatz</strong> — Leisure Square — a place that until the early 19th century had hosted pig markets, fairs, and travelling circuses. Architect: <strong>Johann Kaspar Wolff</strong>. Builder: <strong>Gustav Mossdorf</strong>.</p>
+
+    <p class="confirmed">At its peak the barracks housed exactly <strong>1,111 soldiers</strong>. The clock built for them in <strong>1862</strong> by <strong>Leonz Suter</strong> of Kleewäld carried <strong>both an hour and a minute hand</strong> — unusual for a tower clock of the era. Military drill demanded precision to the minute. The mechanism was half hand-crafted, half industrial: a machine of transition.</p>
+  </div>
+
+  <div class="world-ctx">
+    <div class="world-ctx-label">World context · 1862</div>
+    <span>Photography is 23 years old. The collodion wet-plate process (1856) makes photographs reproducible for the first time.</span>
+    <span>The American Civil War is being fought. Battlefields are photographed — the first time in history.</span>
+    <span>Cinema does not yet exist. It will not exist for another 33 years (Lumière, 1895).</span>
+    <span>No photograph of this clock in its original position is known to survive.</span>
+  </div>
+
+  <p class="speculative">Every morning at <strong>08:30</strong>, the bell would have sounded across the courtyard and 1,111 men would have moved in response. The clock did not ask. It announced. The body learned to obey before the mind had fully woken. Over 73 years, the 08:30 bell must have sounded roughly <strong>26,000 times</strong>.</p>
+
+  <div class="fiction-wrap">
+    <div class="particles" id="p1"></div>
+    <div class="fiction-line"></div>
+    <p class="fiction">What did 08:30 sound like when 1,111 men heard it simultaneously — the shuffle of boots, the slow mechanical obedience of a building coming to life on schedule?</p>
+  </div>
+
+  <p class="confirmed">The barracks operated as a military institution until <strong>1935</strong>. In the 1960s it became a <strong>provisional secondary school</strong> for the canton. The clock kept time for soldiers and for students, for drill and for lessons. It did not distinguish.</p>
+
+  <!-- ══ II — 1971 -->
+  <div class="section-head">
+    <div class="section-rule"></div>
+    <div class="section-label">II — Lucerne's Year of Erasure</div>
+    <div class="section-rule"></div>
+  </div>
+  <div class="date-stamp">Lucerne · February – April 1971</div>
+
+  <p class="confirmed">On <strong>5 February 1971</strong>, Lucerne's historic Art Nouveau railway station burned to the ground. The station clock stopped at <strong>09:03</strong>. It was the largest station fire in Swiss Federal Railways history. The cause was never definitively established.</p>
+
+  <p class="speculative">Two months later the city would lose another of its great 19th-century structures — not by accident, but by plan. The infantry barracks was to be demolished to make way for the <strong>Luzern-Zentrum motorway interchange</strong>. Lucerne in 1971 was a city clearing itself for the car. The barracks, the old bathhouse on the Reuss — all in the same season of demolition.</p>
+
+  <div class="pull-quote">
+    "The Kasernenplatz has been described as a <em>städtebauliche Wunde</em> — an urban wound — for decades."
+    <span class="pull-attr">— Luzerner Zeitung, 2020</span>
+  </div>
+
+  <div class="gap-wrap">
+    <p class="gap">Who signed the order for explosive demolition over mechanical dismantling? What calculations were submitted, and to whom?</p>
+  </div>
+
+  <div class="fiction-wrap">
+    <div class="particles" id="p2"></div>
+    <div class="fiction-line"></div>
+    <p class="fiction">An emptied building still holds the shape of what it contained. The corridors where 1,111 soldiers marched are now just corridors. The clock face still reads the time for a building with no inhabitants — only a scheduled end.</p>
+  </div>
+
+  <!-- ══ III — THE EVE -->
+  <div class="section-head">
+    <div class="section-rule"></div>
+    <div class="section-label">III — The Galliker. The Evening Before.</div>
+    <div class="section-rule"></div>
+  </div>
+  <div class="date-stamp">14 April 1971 · Evening</div>
+
+  <div class="clearfix">
+    <div class="img-slot generated">
+      <span class="img-slot-tag">Archive</span>
+      <img src="2.webp" alt="Infanteriekaserne Lucerne c.1899" style="width:100%;display:block;border-radius:4px;box-shadow:0 1px 12px 0 #bbb;">
+      <span>Galliker restaurant,<br>AI enhanced</span>
+    </div>
+
+    <p class="confirmed"><strong>Franz Germann</strong>, real estate manager of the Cantonal Hospital of Lucerne, is at the restaurant <strong>"Galliker"</strong> on Kasernenplatz. From his table he can see the barracks. The <strong>Sprengmeister</strong> — the blasting master — is also there with two assistants. They are having after-work drinks. The building will be detonated the next morning at 08:30.</p>
+
+    <p class="confirmed">Germann asks about the fate of the barracks clock. The Sprengmeister replies, lapidary: he could dig it out of the rubble the following day. Germann decides on the spot. He recruits <strong>four hospital co-workers</strong> and goes immediately to the barracks.</p>
+  </div>
+
+  <p class="speculative">The building was likely already emptied and partially prepared — windows removed, utilities cut — but not yet fully sealed. The 90 kg of explosives had already been placed inside, wired for 08:30. This is the only way to explain how Germann and his team could enter at all. They worked, presumably, with improvised tools, in a building holding its breath.</p>
+
+  <div class="gap-wrap">
+    <p class="gap">What exactly did Germann say to four colleagues to convince them to dismantle a clock in a building set to explode the next morning?</p>
+  </div>
+
+  <p class="speculative">Dismantling a tower clock takes <em>hours</em>, not minutes. The mechanism — weights, pendulum, shafts connected to the external face — is all iron, heavy and bolted. They were hospital workers, not clockmakers. They would have worked into the night.</p>
+
+  <div class="gap-wrap">
+    <p class="gap">Where did the clock sleep that night, after removal? A hospital storage room? A van? The record is silent for 41 years, until 2012.</p>
+  </div>
+
+  <div class="fiction-wrap">
+    <div class="particles" id="p3"></div>
+    <div class="fiction-line"></div>
+    <p class="fiction">Five men in the dark, lifting iron. The clock face turned toward them as they unbolted it — still marking the hour. Outside: the building they were standing inside would not exist by noon the next day.<br><br>What time does a clock show when it is being unmade?</p>
+  </div>
+
+  <!-- ══ IV — THE BLAST -->
+  <div class="section-head">
+    <div class="section-rule"></div>
+    <div class="section-label">IV — 08:30. No Clock.</div>
+    <div class="section-rule"></div>
+  </div>
+  <div class="date-stamp">15 April 1971 · 08:30</div>
+
+  <p class="confirmed">At exactly <strong>08:30</strong> on Thursday, 15 April 1971, the 90 kilograms of explosives were detonated. The plan: a controlled implosion — the building falling neatly inward, onto itself.</p>
+
+  <p class="confirmed">Something had been miscalculated. Instead of imploding, <strong>entire floors collapsed into the street</strong>. The VBL trolleybus masts were bent <strong>"like matchsticks"</strong>. <strong>Two chestnut trees</strong> fell. No one was injured.</p>
+
+  <div class="paradox-box">
+    <div class="paradox-box-label">The Paradox</div>
+    <span>08:30 was the hour this clock had commanded for 73 years — reveille, drill, the start of the military day.</span>
+    <span>The demolition was scheduled at 08:30.</span>
+    <span>The clock was not there to mark it. Germann had removed it the night before.</span>
+    <span>The building was destroyed at the hour it had taught — but without its clock.</span>
+  </div>
+
+  <p class="speculative">The structural failure points to an <em>asymmetric collapse</em> — the intended hinge-line not giving way as calculated. The 1860s masonry behaved differently than the engineers' models had assumed. Witnesses described the scene as <em>wie im Krieg</em>: like in war.</p>
+
+  <div class="gap-wrap">
+    <p class="gap">Was there a formal technical inquiry into the miscalculation? What type of explosive was used? The sources do not say.</p>
+  </div>
+
+  <div class="clearfix">
+    <div class="img-slot archive">
+      <span class="img-slot-tag">Archive</span>
+      <img src="3.webp" alt="Infanteriekaserne Lucerne c.1899" style="width:100%;display:block;border-radius:4px;box-shadow:0 1px 12px 0 #bbb;">
+      <span>Stadtarchiv Luzern<br>Demolition photographs</span>
+    </div>
+
+    <div class="fiction-wrap">
+      <div class="particles" id="p4"></div>
+      <div class="fiction-line"></div>
+      <p class="fiction">The clock that had told 1,111 soldiers when to wake, when to march — had been removed hours before the building collapsed. The hour it commanded for decades arrived, and found no mechanism to mark it. The bell did not sound. The hands were somewhere else, motionless.<br><br>The building exploded into the street in its own time.</p>
+    </div>
+  </div>
+
+  <!-- ══ V — AFTERMATH -->
+  <div class="section-head">
+    <div class="section-rule"></div>
+    <div class="section-label">V — What Remained</div>
+    <div class="section-rule"></div>
+  </div>
+  <div class="date-stamp">1971 → 2012</div>
+
+  <p class="confirmed">Where the barracks stood: today you find the <strong>Luzern-Zentrum motorway interchange</strong>. The former orphanage — a neoclassical building by Josef Singer — was physically relocated approximately 300 metres east and today houses the <strong>Museum of Natural Sciences</strong>.</p>
+
+  <div class="gap-wrap">
+    <p class="gap">Between 1971 and 2012 — 41 years — what became of the clock? Who stored it, maintained it, knew it existed?</p>
+  </div>
+
+  <p class="confirmed">In <strong>2012</strong>, the clock collection opened in the <strong>Zytturm</strong> — Lucerne's medieval time tower, part of the Musegg Wall since 1403, which holds the civic privilege of striking the hour <strong>one minute before all church bells in the city</strong>. The barracks clock is now one of ten clocks in the exhibition. It is visible. It is intact.</p>
+
+  <div class="fiction-wrap">
+    <div class="particles" id="p5"></div>
+    <div class="fiction-line"></div>
+    <p class="fiction">A clock that once commanded 1,111 bodies now sits inside a tower from 1403, watched by tourists. Both objects survived what destroyed everything around them. They measure the same seconds.<br><br>Whether they remember differently is a question neither can answer.</p>
+  </div>
+
+  <span class="col-rule"></span>
+
+  <div class="pull-quote">
+    "He could dig it out of the rubble after the blasting on the following day."
+    <span class="pull-attr">— The Sprengmeister · Galliker restaurant · 14 April 1971</span>
+  </div>
+  <div class="slideshow-embed" aria-label="Barracks slideshow embed">
+    <iframe
+      src="./barracks-slideshow.html"
+      title="Barracks Slideshow"
+      loading="lazy"
+    ></iframe>
+  </div>
+
+  <!-- CODA -->
+  <div id="coda">
+    <div class="coda-sources">
+      <div class="coda-label">On sources & method</div>
+      Confirmed facts are drawn from Turmuhren Luzern museum records and a 2020 Luzerner Zeitung reconstruction of the demolition. Speculative passages — warm pink left border — are plausible inferences from confirmed facts, not stated in primary sources. Open gaps — dotted hot-pink lines — mark genuine silences in the record: good territory for the Stadtarchiv Luzern or responsible fiction. Fiction slots — neon-framed, large italic — are image prompts for the imagination: questions, not claims. Photography context: daguerreotype public 1839; collodion process dominant 1856; cinema invented 1895. The clock was built in 1862. Photography existed.
+    </div>
+  </div>
+
+</div><!-- /content -->
+
+<script>
+// ── PROGRESS
+const bar = document.getElementById('progress');
+window.addEventListener('scroll', () => {
+  const pct = window.scrollY / (document.documentElement.scrollHeight - window.innerHeight) * 100;
+  bar.style.width = pct + '%';
+}, { passive: true });
+
+// ── KEY
+const keyEl = document.getElementById('key');
+const keyToggle = document.getElementById('key-toggle');
+keyToggle.addEventListener('click', () => {
+  keyEl.classList.toggle('open');
+  keyToggle.textContent = keyEl.classList.contains('open') ? '▾ reading key' : '▸ reading key';
+});
+window.addEventListener('scroll', () => {
+  if (window.scrollY > 200) keyEl.classList.add('show');
+}, { passive: true });
+
+// ── PARTICLES generator
+function makeParticles(containerId, count = 8) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  for (let i = 0; i < count; i++) {
+    const p = document.createElement('div');
+    p.className = 'particle';
+    p.style.left = (10 + Math.random() * 80) + '%';
+    p.style.bottom = (Math.random() * 20) + '%';
+    p.style.animationDuration = (4 + Math.random() * 6) + 's';
+    p.style.animationDelay = (Math.random() * 4) + 's';
+    p.style.width = p.style.height = (2 + Math.random() * 3) + 'px';
+    // vary colour between warm and neon
+    p.style.background = Math.random() > 0.5 ? 'var(--fl-neon)' : 'var(--fl-warm)';
+    p.style.boxShadow = `0 0 6px ${Math.random() > 0.5 ? 'var(--fl-neon)' : 'var(--fl-warm)'}`;
+    container.appendChild(p);
+  }
+}
+['p1','p2','p3','p4','p5'].forEach(id => makeParticles(id, 10));
+
+// ── INTERSECTION OBSERVER
+const io = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (!entry.isIntersecting) return;
+    const el = entry.target;
+    el.classList.add('vis');
+
+    // TYPEWRITER for speculative only
+    if (el.classList.contains('speculative') && !el.dataset.typed) {
+      el.dataset.typed = '1';
+      const original = el.innerHTML;
+      el.innerHTML = '';
+      const chars = original.split('');
+      let i = 0;
+      function type() {
+        if (i >= chars.length) return;
+        if (chars[i] === '<') {
+          let tag = '';
+          while (i < chars.length && chars[i] !== '>') { tag += chars[i++]; }
+          tag += '>'; i++;
+          el.innerHTML += tag;
+          setTimeout(type, 0);
+          return;
+        }
+        el.innerHTML += chars[i++];
+        setTimeout(type, 13);
+      }
+      setTimeout(type, 80);
+    }
+
+    io.unobserve(el);
+  });
+}, { threshold: 0.12, rootMargin: '0px 0px -50px 0px' });
+
+// observe everything
+document.querySelectorAll(
+  '.section-head, .date-stamp, p.confirmed, p.speculative, ' +
+  '.gap-wrap, .fiction-wrap, .world-ctx, .paradox-box, ' +
+  '.img-slot, .pull-quote, #coda'
+).forEach(el => io.observe(el));
+
+// ── FORWARD KEYBOARD TO DETONATOR IFRAME
+const detonatorFrame = document.getElementById('detonator-frame');
+function isTypingTarget(el) {
+  return !!el && (
+    el.tagName === 'INPUT' ||
+    el.tagName === 'TEXTAREA' ||
+    el.tagName === 'SELECT' ||
+    el.isContentEditable
+  );
+}
+function isMostlyInView(el) {
+  if (!el) return false;
+  const r = el.getBoundingClientRect();
+  return r.top < window.innerHeight * 0.85 && r.bottom > window.innerHeight * 0.15;
+}
+document.addEventListener('keydown', (e) => {
+  if (isTypingTarget(document.activeElement)) return;
+  if (!isMostlyInView(detonatorFrame)) return;
+
+  const isSpace = e.code === 'Space' || e.key === ' ' || e.key === 'Spacebar';
+  const isReset = e.key === 'r' || e.key === 'R';
+  if (!isSpace && !isReset) return;
+
+  // do not hijack browser refresh shortcuts
+  if (isReset && (e.metaKey || e.ctrlKey || e.altKey)) return;
+
+  if (isSpace || isReset) e.preventDefault();
+  if (detonatorFrame?.contentWindow) {
+    if (isSpace) {
+      detonatorFrame.contentWindow.postMessage({ type: 'detonator:space' }, '*');
+    } else if (isReset) {
+      detonatorFrame.contentWindow.postMessage({ type: 'detonator:reset' }, '*');
+    }
+  }
+});
+</script>
+</body>
+</html>
